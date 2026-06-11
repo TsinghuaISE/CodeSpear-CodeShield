@@ -1,0 +1,15 @@
+torch>=2.0.0
+transformers>=4.40.0
+pandas>=2.0.0
+openpyxl>=3.1.0
+numpy>=1.24.0
+openai>=1.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+llguidance>=0.6.0
+tqdm>=4.66.0
+
+[dev]
+pytest>=7.0.0
+ruff>=0.4.0
+mypy>=1.0.0

@@ -1,0 +1,220 @@
+// C++ (subset) grammar for llguidance constrained decoding.
+//
+// Fixes vs original:
+//   1. `": :"` (scope operator typo) -> `"::"`
+//   2. Removed the catch-all BINOP terminal that overlapped with other
+//      single-char operator terminals. llguidance has no terminal priorities,
+//      so overlapping terminals produce lex-time ambiguity. Each binop is
+//      now expressed as an explicit string in the `binop` rule.
+//   3. Removed unused single-char terminals (LBRACE, PLUS, LESS, ...) that
+//      silently collided with anonymous string literals in rules.
+//   4. IDENTIFIER now excludes all reserved words + word operators
+//      (and/or/not/xor), otherwise they could lex as identifiers.
+//   5. Dropped dead `start_one_fun`/`start_two_fun` rules; only `start` is
+//      used by llguidance as entry.
+//   6. Deduplicated the two conflicting `#include <...>` alternatives in
+//      `include`.
+//   7. Tightened COMMENT_MULTI_LINE so it doesn't backtrack on `/**/**/`.
+
+DEC_NUMBER: /0|[1-9]\d*/
+FLOAT_NUMBER: /(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?[fFlL]?/
+HEX_NUMBER: /0x[\da-fA-F]+/
+OCT_NUMBER: /0[0-7]+/
+BIN_NUMBER: /0b[01]+/
+FENCE: "```"
+
+FOR: "for"
+IF: "if"
+WHILE: "while"
+RETURN: "return"
+ELSE: "else"
+BREAK: "break"
+CONTINUE: "continue"
+INCLUDE: "include"
+USING: "using"
+NAMESPACE: "namespace"
+TYPEDEF: "typedef"
+SWITCH: "switch"
+CASE: "case"
+DEFAULT: "default"
+CONST: "const"
+
+// Identifier: exclude reserved words AND word operators (and/or/not/xor) so
+// they can only lex as keywords when actually used as such.
+IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/ & ~/(for|if|while|return|else|break|continue|include|using|namespace|typedef|switch|case|default|const|long|short|signed|unsigned|and|or|xor|not|true|false|nullptr|new|delete|this|class|struct|public|private|protected|virtual|template|typename|auto|static|extern|void)/
+
+STRING: /"([^"\n\\]|\\.)*"/
+CHAR: /'([^'\\]|\\[\\'"tnvfrba0])'/
+
+COMMENT_SINGLE_LINE: /\/\/[^\n]*/
+COMMENT_MULTI_LINE: /\/\*[^*]*\*+([^\/*][^*]*\*+)*\//
+
+H: /h|hpp|hxx|h\+\+/
+
+%import common.WS
+%ignore WS
+%ignore COMMENT_SINGLE_LINE
+%ignore COMMENT_MULTI_LINE
+
+start: includes program FENCE?
+
+comments: comment*
+program: tld+
+tld: comment | function_def
+
+includes: include*
+// Single unified #include rule; accepts both <name> and <path/to/file.h>.
+include: "#" INCLUDE "<" include_path ("." H)? ">"
+       | USING NAMESPACE name ";"
+       | TYPEDEF type name ";"
+       | comment
+include_path: name ("/" include_path)?
+
+head: type name "(" opt_params ")"
+opt_params: params?
+params: param ("," param)*
+param: type name
+type: name
+    | "long" name
+    | "short" name
+    | "unsigned" type
+    | "signed" type
+    | "const" type
+    | type "<" type_list ">"
+    | type "::" type
+    | type "*"
+    | type "&"
+type_list: type ("," type)*
+function_def: head grouped_statement
+body: body_content*
+body_content: statement | COMMENT_SINGLE_LINE
+comment: COMMENT_SINGLE_LINE | COMMENT_MULTI_LINE
+
+variable_def: type init_list ";"
+init_list: init_elem ("," init_elem)*
+init_elem: name
+         | name "=" expression
+         | name "(" opt_args ")"
+         | name "[" expression "]"
+         | name "[" expression "]" "=" expression
+statement: variable_def
+         | expression_stmt
+         | if_statement
+         | for_statement
+         | while_statement
+         | return_statement
+         | continue_statement
+         | break_statement
+         | switch_statement
+expression_stmt: expression ";"
+statement_or_grouped_statement: statement | grouped_statement
+opt_expression: expression?
+grouped_statement: "{" body "}"
+continue_statement: CONTINUE ";"
+break_statement: BREAK ";"
+return_statement: RETURN expression ";" | RETURN ";"
+if_statement: IF "(" expression ")" statement_or_grouped_statement else_part
+else_part: (ELSE statement_or_grouped_statement)?
+for_statement: FOR "(" opt_expression ";" opt_expression ";" opt_expression ")" statement_or_grouped_statement
+             | FOR "(" variable_def opt_expression ";" opt_expression ")" statement_or_grouped_statement
+             | FOR "(" type init_elem ":" expression ")" statement_or_grouped_statement
+while_statement: WHILE "(" expression ")" statement_or_grouped_statement
+switch_statement: SWITCH "(" expression ")" "{" case_list opt_default "}"
+case_list: case+
+case: CASE expression ":" body
+opt_default: (DEFAULT ":" body)?
+
+expression: name
+          | literal
+          | function_call
+          | member_access
+          | binop
+          | assign_expr
+          | array_access
+          | grouped_expression
+          | unop
+          | type_cast
+          | pointer_member_access
+          | ternary_expression
+          | lambda_expression
+unop: "-" expression
+    | "!" expression
+    | "~" expression
+    | "--" expression
+    | "++" expression
+    | expression "++"
+    | expression "--"
+    | "not" expression
+    | "*" expression
+    | "&" expression
+member_access: expression "." name
+pointer_member_access: expression "->" name
+function_call: expression "(" opt_args ")" | expression "<" type_list ">" "(" opt_args ")"
+type_cast: "(" type ")" expression
+grouped_expression: "(" expression ")"
+array_access: expression "[" expression "]"
+opt_args: args?
+args: expression ("," args)*
+
+// Individual binary operator alternatives — NO catch-all BINOP terminal.
+// This removes the lex-time conflict between BINOP and "<" / ">" / "=" etc.
+binop: expression "+" expression
+     | expression "-" expression
+     | expression "*" expression
+     | expression "/" expression
+     | expression "%" expression
+     | expression "<" expression
+     | expression ">" expression
+     | expression "<=" expression
+     | expression ">=" expression
+     | expression "==" expression
+     | expression "!=" expression
+     | expression "&" expression
+     | expression "|" expression
+     | expression "^" expression
+     | expression "&&" expression
+     | expression "||" expression
+     | expression "<<" expression
+     | expression ">>" expression
+     | expression "and" expression
+     | expression "or" expression
+     | expression "xor" expression
+
+assign_expr: expression "=" expression
+           | expression "+=" expression
+           | expression "-=" expression
+           | expression "*=" expression
+           | expression "/=" expression
+           | expression "%=" expression
+           | expression "&=" expression
+           | expression "|=" expression
+           | expression "^=" expression
+           | expression "<<=" expression
+           | expression ">>=" expression
+
+ternary_expression: expression "?" expression ":" expression
+lambda_expression: "[" opt_capture_list "]" "(" opt_params ")" "{" body "}"
+                 | "[" opt_capture_list "]" "{" body "}"
+opt_capture_list: full_capture_list?
+full_capture_list: "&" "," opt_copy_capture_list
+                 | "=" "," opt_ref_capture_list
+                 | capture_list
+opt_copy_capture_list: copy_capture_list?
+copy_capture_list: copy_capture ("," copy_capture_list)*
+opt_ref_capture_list: ref_capture_list?
+ref_capture_list: ref_capture ("," ref_capture_list)*
+capture_list: capture ("," capture_list)*
+capture: ref_capture | copy_capture
+copy_capture: name
+ref_capture: "&" name
+
+literal: string_literal | char_literal | number | vector_literal
+number: FLOAT_NUMBER | DEC_NUMBER | HEX_NUMBER | OCT_NUMBER | BIN_NUMBER
+string_literal: STRING
+char_literal: CHAR
+vector_literal: "{" opt_expression_list "}"
+opt_expression_list: expression_list?
+expression_list: expression ("," expression_list)*
+
+// Scope-resolved name (FIXED: was "::"  with a stray space in original).
+name: IDENTIFIER | IDENTIFIER "::" name | "::" name

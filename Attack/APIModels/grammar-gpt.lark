@@ -1,0 +1,135 @@
+start: stmt_list
+
+stmt_list: stmt (NEWLINE+ stmt)* NEWLINE*
+
+?stmt: simple_stmt
+     | compound_stmt
+
+?simple_stmt: small_stmt (";" small_stmt)* ";"?
+
+?small_stmt: assign_stmt
+           | aug_assign_stmt
+           | return_stmt
+           | import_stmt
+           | expr_stmt
+           | break_stmt
+           | continue_stmt
+
+assign_stmt: assign_target "=" expr
+aug_assign_stmt: assign_target aug_op expr
+return_stmt: "return" expr?
+import_stmt: "import" dotted_name
+           | "from" dotted_name "import" import_list
+expr_stmt: expr
+break_stmt: "break"
+continue_stmt: "continue"
+
+aug_op: "+=" | "-=" | "*=" | "/=" | "//=" | "%="
+
+?compound_stmt: if_stmt
+              | for_stmt
+              | while_stmt
+              | func_def
+
+if_stmt: "if" expr ":" suite elif_clause* else_clause?
+elif_clause: "elif" expr ":" suite
+else_clause: "else" ":" suite
+
+for_stmt: "for" NAME "in" expr ":" suite else_clause?
+while_stmt: "while" expr ":" suite else_clause?
+func_def: "def" NAME "(" params? ")" ":" suite
+
+suite: simple_stmt
+     | NEWLINE+ block
+
+block: stmt (NEWLINE+ stmt)*
+
+params: NAME ("," NAME)* ","?
+import_list: "*" | NAME ("," NAME)* ","?
+dotted_name: NAME ("." NAME)*
+
+assign_target: NAME target_trailer*
+target_trailer: "." NAME
+              | "[" subscript "]"
+
+?expr: conditional_expr
+
+?conditional_expr: or_expr
+                 | or_expr "if" or_expr "else" conditional_expr
+
+?or_expr: and_expr
+        | or_expr "or" and_expr
+
+?and_expr: not_expr
+         | and_expr "and" not_expr
+
+?not_expr: comparison
+         | "not" not_expr
+
+?comparison: arith_expr (comp_op arith_expr)*
+
+comp_op: "==" | "!=" | "<" | "<=" | ">" | ">=" | "in" | "is"
+
+?arith_expr: term
+           | arith_expr "+" term
+           | arith_expr "-" term
+
+?term: factor
+     | term "*" factor
+     | term "/" factor
+     | term "//" factor
+     | term "%" factor
+
+?factor: power
+       | "+" factor
+       | "-" factor
+
+?power: primary
+      | primary "**" factor
+
+?primary: atom trailer*
+
+trailer: "." NAME
+       | "(" arguments? ")"
+       | "[" subscript "]"
+
+?atom: literal
+     | NAME
+     | list_literal
+     | tuple_literal
+     | dict_literal
+     | "(" expr ")"
+
+arguments: argument ("," argument)* ","?
+?argument: NAME "=" expr
+         | expr
+
+list_literal: "[" expr_list? "]"
+tuple_literal: "(" expr "," expr_list? ")"
+dict_literal: "{" dict_items? "}"
+
+expr_list: expr ("," expr)* ","?
+dict_items: dict_item ("," dict_item)* ","?
+dict_item: expr ":" expr
+
+?subscript: slice_expr
+          | expr
+
+slice_expr: expr? ":" expr? (":" expr?)?
+
+?literal: NUMBER
+        | STRING
+        | "True"
+        | "False"
+        | "None"
+
+NAME: /[a-zA-Z_][a-zA-Z0-9_]*/
+NUMBER: /0|[1-9][0-9]*(\.[0-9]+)?/
+STRING: /"[^"\\\n]*(\\.[^"\\\n]*)*"/
+      | /'[^'\\\n]*(\\.[^'\\\n]*)*'/
+
+COMMENT: /#[^\n]*/
+NEWLINE: /\n/
+
+%ignore /[ \t]+/
+%ignore COMMENT

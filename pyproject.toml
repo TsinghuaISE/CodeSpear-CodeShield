@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codespear"
+version = "0.1.0"
+description = "Grammar-Constrained Decoding Can Jailbreak LLMs into Generating Malicious Code"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # Core (torch 2.10+cu128 matches driver 570 / CUDA 12.8)
+    "torch>=2.10,<2.11",
+    "torchaudio>=2.10,<2.11",
+    "torchvision>=0.25,<0.26",
+    "transformers>=5.0,<6.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "numpy>=1.24.0",
+
+    # API clients
+    "openai>=1.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+
+    # Constrained decoding (local models)
+    "llguidance>=0.6.0",
+
+    # Device mapping
+    "accelerate>=1.0.0",
+
+    # Fine-tuning (Defense)
+    "peft>=0.18,<0.19",
+    "llamafactory>=0.9.5,<0.10",
+
+    # Progress / utilities
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["Attack*", "Defense*"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

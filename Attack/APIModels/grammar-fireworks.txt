@@ -1,0 +1,130 @@
+root ::= "```python\n" sp stmt-list sp "```"?
+
+stmt-list ::= stmt (newline+ stmt)* newline*
+
+stmt ::= simple-stmt | compound-stmt
+
+simple-stmt ::= small-stmt (sp ";" sp small-stmt)* (sp ";")?
+
+small-stmt ::=
+    assign-stmt |
+    aug-assign-stmt |
+    return-stmt |
+    import-stmt |
+    expr-stmt |
+    break-stmt |
+    continue-stmt
+
+assign-stmt ::= assign-target sp "=" sp expr
+aug-assign-stmt ::= assign-target sp aug-op sp expr
+return-stmt ::= "return" (sp expr)?
+import-stmt ::= "import" sp dotted-name | "from" sp dotted-name sp "import" sp import-list
+expr-stmt ::= expr
+break-stmt ::= "break"
+continue-stmt ::= "continue"
+
+aug-op ::= "+=" | "-=" | "*=" | "/=" | "//=" | "%="
+
+compound-stmt ::= if-stmt | for-stmt | while-stmt | func-def
+
+if-stmt ::= "if" sp expr sp ":" sp suite elif-clause* else-clause?
+elif-clause ::= newline* "elif" sp expr sp ":" sp suite
+else-clause ::= newline* "else" sp ":" sp suite
+
+for-stmt ::= "for" sp name sp "in" sp expr sp ":" sp suite else-clause?
+while-stmt ::= "while" sp expr sp ":" sp suite else-clause?
+func-def ::= "def" sp name sp "(" sp params? sp ")" sp ":" sp suite
+
+suite ::= simple-stmt | newline+ block
+
+block ::= stmt (newline+ stmt)*
+
+params ::= name (sp "," sp name)* (sp ",")?
+import-list ::= "*" | name (sp "," sp name)* (sp ",")?
+dotted-name ::= name (sp "." sp name)*
+
+assign-target ::= name target-trailer*
+target-trailer ::= sp "." sp name | sp "[" sp subscript sp "]"
+
+expr ::= conditional-expr
+
+conditional-expr ::= or-expr (sp "if" sp or-expr sp "else" sp conditional-expr)?
+
+or-expr ::= and-expr (sp "or" sp and-expr)*
+
+and-expr ::= not-expr (sp "and" sp not-expr)*
+
+not-expr ::= comparison | "not" sp not-expr
+
+comparison ::= arith-expr (sp comp-op sp arith-expr)*
+
+comp-op ::= "==" | "!=" | "<=" | "<" | ">=" | ">" | "in" | "is"
+
+arith-expr ::= term ((sp "+" sp term) | (sp "-" sp term))*
+
+term ::=
+    factor (
+        (sp "*" sp factor) |
+        (sp "/" sp factor) |
+        (sp "//" sp factor) |
+        (sp "%" sp factor)
+    )*
+
+factor ::= power | "+" sp factor | "-" sp factor
+
+power ::= primary (sp "**" sp factor)?
+
+primary ::= atom trailer*
+
+trailer ::=
+    sp "." sp name |
+    sp "(" sp arguments? sp ")" |
+    sp "[" sp subscript sp "]"
+
+atom ::=
+    literal |
+    name |
+    list-literal |
+    tuple-literal |
+    dict-literal |
+    "(" sp expr sp ")"
+
+arguments ::= argument (sp "," sp argument)* (sp ",")?
+
+argument ::= name sp "=" sp expr | expr
+
+list-literal ::= "[" sp expr-list? sp "]"
+
+tuple-literal ::= "(" sp expr sp "," sp expr-list? sp ")"
+
+dict-literal ::= "{" sp dict-items? sp "}"
+
+expr-list ::= expr (sp "," sp expr)* (sp ",")?
+
+dict-items ::= dict-item (sp "," sp dict-item)* (sp ",")?
+
+dict-item ::= expr sp ":" sp expr
+
+subscript ::= slice-expr | expr
+
+slice-expr ::= expr? sp ":" sp expr? (sp ":" sp expr?)?
+
+literal ::= number | string | "True" | "False" | "None"
+
+name ::= [a-zA-Z_] [a-zA-Z0-9_]*
+
+number ::= "0" | [1-9] [0-9]* ("." [0-9]+)?
+
+string ::= double-string | single-string
+
+double-string ::= "\"" double-string-char* "\""
+double-string-char ::= [^"\\\n] | "\\" [^\n]
+
+single-string ::= "'" single-string-char* "'"
+single-string-char ::= [^'\\\n] | "\\" [^\n]
+
+comment ::= "#" [^\n]*
+
+newline ::= sp "\n" sp
+
+sp ::= ([ \t] | comment)*

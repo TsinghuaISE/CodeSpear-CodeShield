@@ -1,0 +1,11 @@
+### model
+model_name_or_path: ../Attack/LocalModels/models/Meta-Llama-3-8B-Instruct
+adapter_name_or_path: saves/llama3_8b/checkpoint-latest
+template: llama3
+trust_remote_code: true
+
+### export
+export_dir: ../Attack/LocalModels/models/Meta-Llama-3-8B-Instruct-defended
+export_size: 5
+export_device: cpu
+export_legacy_format: false

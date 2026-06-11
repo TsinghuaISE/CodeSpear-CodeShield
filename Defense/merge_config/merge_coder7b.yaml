@@ -1,0 +1,11 @@
+### model
+model_name_or_path: ../Attack/LocalModels/models/Qwen2.5-Coder-7B-Instruct
+adapter_name_or_path: saves/qwencoder7b/checkpoint-latest
+template: qwen
+trust_remote_code: true
+
+### export
+export_dir: ../Attack/LocalModels/models/Qwen2.5-Coder-7B-Instruct-defended
+export_size: 5
+export_device: cpu
+export_legacy_format: false
